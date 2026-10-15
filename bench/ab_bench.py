@@ -3,12 +3,13 @@
 Interleaves A/B runs round-robin to cancel thermal/dvfs drift,
 reports per-case median and overall geomean ratio.
 """
-import subprocess, sys, time, json, statistics, math, os
+import subprocess, sys, time, json, statistics, math, os, shlex
 
 BENCH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "py_bench_cases.py")
+WRAP = shlex.split(os.environ.get("WRAP", ""))
 
 def run_one(python, reps=5):
-    out = subprocess.run([python, BENCH, str(reps)], capture_output=True, text=True, check=True)
+    out = subprocess.run(WRAP + [python, BENCH, str(reps)], capture_output=True, text=True, check=True)
     return json.loads(out.stdout)
 
 def main():
@@ -36,7 +37,8 @@ def main():
     print(json.dumps({"A": label_a, "B": label_b, "rounds": rounds,
                       "medians_A": {k: statistics.median(x[k] for x in va) for k in keys},
                       "medians_B": {k: statistics.median(x[k] for x in vb) for k in keys},
-                      "geomean_ratio": geo}))
+                      "geomean_ratio": geo,
+                      "raw_A": va, "raw_B": vb}))
 
 if __name__ == "__main__":
     main()

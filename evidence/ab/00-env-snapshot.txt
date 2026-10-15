@@ -1,0 +1,11 @@
+# env snapshot Thu Oct 15 21:47:40 CST 2026
+  PID %CPU     ELAPSED COMMAND
+16564 65.9       00:05 python3 tools/anchor_check.py zygiskd-arm64
+16996 33.3       00:00 ps -eo pid,pcpu,etime,args --sort=-pcpu
+16997 33.3       00:00 head -6
+24150 24.8    02:03:30 python3 /data/data/com.termux/files/home/.local/bin/hermes
+16985 11.1       00:00 /data/data/com.termux/files/usr/bin/bash -c source /data/data/com.termux/files/usr/tmp/hermes-snap-bb085e4c57e2.sh >/dev/null 2>&1 || true export AI_AGENT="${AI_AGENT:-hermes-agent}" HERMES_AGENT="${HERMES_AGENT:-true}" export GIT_PAGER="${GIT_PAGER:-cat}" PAGER="${PAGER:-cat}" builtin cd -- /data/data/com.termux/files/home/cpython-pgo-lto-termux || exit 126 eval 'cd /data/data/com.termux/files/home/cpython-pgo-lto-termux && { echo "# env snapshot $(date)"; ps -eo pid,pcpu,etime,args --sort=-pcpu | head -6; cat /proc/meminfo | grep -E '\''MemAvailable|SwapFree'\''; echo; echo "# bench: taskset -c 7, 15 rounds interleaved, median"; } | tee evidence/ab/00-env-snapshot.txt && WRAP='\''taskset -c 7'\'' python3 bench/ab_bench.py $PREFIX/bin/python3 /data/data/com.termux/files/home/opt/pgo-python-3.14.6/bin/python3 15 stock pgo+lto 2>evidence/ab/02-progress.log | tee evidence/ab/01-ab-result.txt' __hermes_ec=$? umask 077 __hermes_snap_tmp=$(mktemp /data/data/com.termux/files/usr/tmp/hermes-snap-bb085e4c57e2.sh.tmp.XXXXXXXXXX) && { { ( unset ${!HERMES_SESSION_*} ${!HERMES_CRON_AUTO_DELIVER_*} ${!HERMES_BROWSER_CONTROL_*} AI_AGENT HERMES_AGENT HERMES_DELEGATED_CHILD_CONTEXT HERMES_CRON_SESSION ${!HERMES_RPC_*} HERMES_KERNEL_DIR HERMES_UI_SESSION_ID 2>/dev/null; export -p; ) || true; } > "$__hermes_snap_tmp" && mv -f "$__hermes_snap_tmp" /data/data/com.termux/files/usr/tmp/hermes-snap-bb085e4c57e2.sh; } 2>/dev/null || rm -f "$__hermes_snap_tmp" 2>/dev/null || true printf '\n__HERMES_CWD_bb085e4c57e2__%s__HERMES_CWD_bb085e4c57e2__\n' "$(pwd -P)" exit $__hermes_ec
+MemAvailable:    9312928 kB
+SwapFree:       42655644 kB
+
+# bench: taskset -c 7, 15 rounds interleaved, median
