@@ -18,22 +18,27 @@
 
 ## 结论
 
-A/B 实测(15 轮交替,taskset 固定 core 5,中位数,设备 rothko / D9300+):
+最终 A/B(主指标=进程 CPU 时间 time.process_time,ABBA 交替顺序,15 轮,taskset 固定 core 5,设备 rothko / D9300+,测试时存在间歇第三方后台负载):
 
-| 用例 | stock | PGO+LTO | B/A |
+| 用例 | stock CPU | PGO+LTO CPU | B/A |
 |---|---|---|---|
-| float_loop (10万次) | 15.82 ms | 7.73 ms | 0.489 |
-| call_overhead (单次) | 53.0 ns | 38.6 ns | 0.727 |
-| list_comp (10万元素) | 15.84 ms | 10.00 ms | 0.631 |
-| str_utf8 | 9.32 µs | 8.14 µs | 0.874 |
-| json_roundtrip | 100.2 µs | 63.4 µs | 0.633 |
-| regex | 760.2 µs | 627.2 µs | 0.825 |
-| dict_build (10万项) | 19.23 ms | 11.58 ms | 0.602 |
+| float_loop (10万次) | 12.77 ms | 7.00 ms | 0.548 |
+| call_overhead (单次) | 47.2 ns | 32.9 ns | 0.698 |
+| list_comp (10万元素) | 13.67 ms | 7.72 ms | 0.565 |
+| str_utf8 | 8.37 µs | 6.63 µs | 0.792 |
+| json_roundtrip | 88.2 µs | 51.4 µs | 0.583 |
+| regex | 645.5 µs | 528.9 µs | 0.819 |
+| dict_build (10万项) | 16.28 ms | 9.95 ms | 0.611 |
 
-**几何平均 B/A = 0.672,即 PGO+thin LTO 构建在这组纯 Python 微基准上约快 1.49 倍。**
-收益最大的是解释器热循环(float_loop 2.05x);接近 C 扩展的用例(str_utf8)收益最小(1.14x),符合 PGO/LTO 主要优化解释器自身的机理。
+**几何平均 B/A = 0.652,bootstrap 95% CI [0.642, 0.662](10000 次重采样),CI 不含 1.0 → 差异显著。**
+安慰剂 A/A 对照(同法):geomean 1.014,CI [0.984, 1.039] 含 1.0 → 测量系统无位置偏置,噪声底约 ±3%。
+即:PGO+thin LTO 构建在这组 CPU-bound 紧循环微基准上 **CPU 消耗约为 stock 的 65%,约 1.53 倍效率**。
 
-适用边界:微基准以解释器热路径为主,不代表 I/O 密集、数值计算(numpy 走外部 BLAS)或启动延迟场景;第三方后台负载造成的共模尖峰在原始数据(evidence/ab/01-ab-result.txt raw_A/raw_B)中可见并已用中位数抑制。
+诚实边界(采纳 review2 意见):
+- 紧循环形态对 PGO 的代码布局/冷热分离收益最友好,这组数字应视为**收益上界**而非典型应用加速比;真实程序(分支多、调用图深)收益通常更小。
+- json/regex/str_utf8 主要在 C 扩展内执行,等权几何平均混入了"C 扩展构建质量"成分;纯解释器循环(float_loop/list_comp/dict_build)B/A 约 0.55-0.61。
+- 单进程单线程单核结论,不推论并发/IO/启动场景。
+- 墙钟时间版本(v1,ABAB 顺序)结果见 evidence/ab/01/03-v1,结论方向一致(0.672)。
 
 ## 构建/测试过程中的平台差异(非回归)
 
@@ -44,4 +49,7 @@ A/B 实测(15 轮交替,taskset 固定 core 5,中位数,设备 rothko / D9300+):
 
 ## 独立第三方复核(dahetao 代理 deepseek-v4.1-flash)
 
-见 evidence/review/(构建声称核验 / 方法论审计 / 数字复算)。
+见 evidence/review/。三轮独立复核均指出真实问题并已处置:
+1. **构建声称核验**:指出"最终产物无插桩符号"不可判别 PGO 是否被消费 → 已补判别器 c 差分实验(ceval.o 带/不带 profile 编译产物不同,profile 确被消费),见 evidence/pgo-lto/01-pgo-consumption.txt。
+2. **方法论审计**:指出紧循环形态高估收益、缺安慰剂与 CI、应改用 CPU 时间 → 已全部采纳(主指标改 CPU 时间、ABBA、安慰剂 A/A、bootstrap CI、边界声明)。
+3. **数字复算**:独立复算墙钟版 geomean 与发起方一致(0.6715),算术平均>几何平均方向正确。
