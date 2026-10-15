@@ -1,0 +1,6 @@
+observed geomean = 0.6518
+bootstrap 95% CI = [0.6418, 0.6616]  (10000 draws)
+interpretation: CI excludes 1.0 -> B significantly faster
+observed geomean = 1.0136
+bootstrap 95% CI = [0.9835, 1.0386]  (10000 draws)
+interpretation: CI includes 1.0 -> B not separable from noise

@@ -4,3 +4,4 @@
 - A = Termux 官方 Python 3.14.6 包(sysconfig):CFLAGS 含 -O3 -fstack-protector-strong,NDEBUG;CONFIG_ARGS 无 --enable-optimizations、无 --with-lto;sys._jit.is_available()=False;sys._is_gil_enabled()=True;libpython3.14.so 内 __llvm_profile 相关符号数为 0。
 - B = 本机自构建 Python 3.14.6(同版本源码,sha256 一致):configure 传了 --enable-optimizations --with-lto;构建 Makefile 含 -flto=thin 与 -fprofile-instr-use;最终产物为静态二进制(未传 --enable-shared),bin/python3.14 内 __llvm_prf 符号数为 0(插桩已消费);构建过程实际执行了插桩编译→llvm-profdata 合并→profile-use 重编译。
 - 结论拟表述为:「A 无 PGO/LTO/JIT;B 是 PGO(thin LTO)优化构建」。该结论证据是否充分?有没有缺失的核验步骤(例如如何判断 PGO profile 真的被使用而不是被忽略)?
+(要求:不要使用任何工具,不要执行代码,纯文字推理作答)

@@ -1,0 +1,37 @@
+# PGO profile 真实被编译器消费的证据链(回应独立复核 review1 的判别器 c)
+
+## 1. profdata 真实存在且非空
+code.profclangd(3.5MB,由 ~90 个 code-*.profclangr 合并,llvm-profdata merge)。
+llvm-profdata show 输出摘要:
+  Instrumentation level: Front-end
+  Total functions: 21778
+  Maximum function count: 1405262439
+  Total count: 47904691652
+注:profclangr/profclangd 扩展名是 CPython 3.14.6 上游 configure 的命名(tarball 原版,
+非本地篡改),全链自洽:LLVM_PROFILE_FILE=code-%p.profclangr → merge *.profclangr →
+-fprofile-instr-use=code.profclangd。
+
+## 2. profile-use 贯穿构建的机制证据
+Makefile:1035 profile-opt → $(MAKE) build_all CFLAGS_NODIST="... $(PGO_PROF_USE_FLAG)"
+make -n profile-opt 实际打印:
+  make build_all CFLAGS_NODIST=" -fprofile-instr-use=".../code.profclangd"" ...
+
+## 3. 差分判别器(判别器 c:同 TU 带/不带 profile 编译比对)
+对象: Python/ceval.o(解释器主循环,对 profile 最敏感)
+命令: 与构建相同的编译行(取自 make -n,含 -O3 -flto=thin 等),唯一差别是
+      -fprofile-instr-use=<绝对路径>/code.profclangd 的有无。
+结果:
+  with_pgo_ceval.o    1,199,032 bytes  md5 5029c531c69ed289fc127f8996842471
+  without_pgo_ceval.o 1,037,132 bytes  md5 76dd5851e6d6798a4ff5517e346a6b29
+  → 大小与哈希均不同,profile 确实改变代码生成;且带 flag 编译无警告输出。
+  对照(小文件 modsupport.c):两者一致 —— 该 TU 无 profile 敏感热点,符合预期。
+
+## 4. 边界
+- 构建日志因脚本 tail 截断保留,"全程无 profile 警告"只能从差分与产物间接确认;
+  重跑全量构建(构建脚本已修订)可获得完整日志。
+- 最终二进制 __llvm_prf 段数为 0:与"profile 已消费"一致(计数器不残留),
+  但按 review1 指正,该观测本身不可判别,不作依据。
+- A(stock)为共享库构建、B 为静态二进制,产物形态不同;解释器速度对比不受
+  此影响,但符号级比较因此失效,仅以 configure/构建链证据认定 A 无 PGO/LTO。
+- A 的 .comment: Android clang 21.0.0(NDK r563880);其中 "+pgo +bolt +lto"
+  是 NDK 工具链自身的构建描述,与 python 包的构建选项无关,勿混淆。

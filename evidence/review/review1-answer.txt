@@ -1,0 +1,60 @@
+ 是运行期证据，而结论是构建期断言。跨阶段直接推结论，中间环节（配置→规则→执行→  
+ 产物）没有逐层闭合。                                                           
+                                                                                
+ 10. 源码 sha256 一致只保证源码同源，不保证 configure 环境相同（编译器版本、CC  
+ 选择、--enable-shared 差异）。A 是共享构建（libpython .so）、B                 
+ 是静态单文件，两者产物形态不同，本身就让符号级比较失效——这一点必须显式声明为不 
+ 可比，而不是把两侧数字并排呈现。                                               
+                                                                                
+ 三、缺失的核验步骤（尤其「如何判断 profile 真被使用」）                        
+                                                                                
+ - 把检测从「符号计数」换成「段级检测」，且两侧用同一方法：readelf -S /         
+ llvm-objdump -h 查 llvm_prf_* / __llvm_prf_* 段；段的存在不受 strip            
+ 影响，比符号稳。先确认 A/B 是否 strip 过。                                     
+ - 判断 profile 真被采纳，只有这几条能定性：                                    
+   a) llvm-profdata show 该                                                     
+ .profdata：函数数与计数器是否非空、是否与源码/插桩二进制匹配；                 
+   b) 构建日志里不存在 profile 相关降级告警（profile data may be out of date /  
+ no profile data available 之类）——出现即等于编译器忽略或丢弃                   
+ profile，静默退化为无 PGO；                                                    
+   c) 差分实验：同一 TU 分别带 / 不带 -fprofile-instr-use=<同一 profile>        
+ 编译，比对 .o；完全相同即 profile 未生效。这是最直接的判别器；                 
+   d) 对照实验：同源码做一次无 PGO/LTO                                          
+ 构建，比对体积、符号布局、微基准（需控制变量、说明噪声，基准不可单独定案）。   
+ - 判断 LTO 真被采纳：确认链接命令行确含 -flto=thin 且由 lld（带 LTO            
+ plugin）执行；若链接走的是不带 plugin 的 ld.bfd，-flto                         
+ 可能被静默忽略。辅以中间 .o 是否为 LLVM IR bitcode、最终二进制跨 TU            
+ 内联痕迹（DWARF inlined_subroutine）等旁证。                                   
+ - A 侧补齐：PKGBUILD/打包脚本原文；完整                                        
+ sysconfig（CONFIG_ARGS、OPT、CFLAGS、LDFLAGS、LDSHARED、BLDSHARED、CC/CXX      
+ 及版本）；readelf -p .comment 认编译器族；构建目录是否残留                     
+ .profraw/.profdata；是否调用过 profile-opt 类目标。                            
+ - B 侧补齐：llvm-profdata show 输出、构建日志中的 cc/link                      
+ 实际命令行、profraw/profdata 产物留存。                                        
+ - 编译器族问题：__llvm_* 是 LLVM 专属字串。若 A 由 gcc 构建或用 gcc 风格       
+ PGO，用该模式探测本来就会漏检，0                                               
+ 符号毫无意义。必须先确定两侧编译器族与版本是否一致。                           
+                                                                                
+ 四、建议的可证伪表述                                                           
+                                                                                
+ - A：据 CONFIG_ARGS，构建配置未请求                                            
+ PGO/LTO；当前产物无插桩痕迹（仅说明非插桩产物）；是否存在环境变量/打包脚本注入 
+ 未核验；JIT 依 is_available 语义为不支持（待语义确认）。                       
+ - B：configure 与 Makefile 层面开启了 LLVM PGO 与 ThinLTO 规则；profile        
+ 是否被编译器实际采纳、LTO 是否真正贯通，未核验。                               
+ - 撤掉两条「0 符号」作为结论依据，或明确标注为「不可判别」。                   
+                                                                                
+ 一句话结论：该结论目前是「证据不充分的推定」，不是核验结果；最致命的不是某个符 
+ 号查错了，而是拿最终产物上的插桩残留量去判断构建是否使用                       
+ PGO——这个观测在设计上就分不开「从未 PGO」与「PGO 后被消费」两种情形。          
+                                                                                
+ ────────────────────────────────────────────────────────────────────────────── 
+
+Resume this session with:
+  hermes --resume 20261015_215322_457e07
+  hermes -c "核验 PGO/LTO 结论证据是否充分"
+
+Session:        20261015_215322_457e07
+Title:          核验 PGO/LTO 结论证据是否充分
+Duration:       1m 45s
+Messages:       2 (1 user, 0 tool calls)

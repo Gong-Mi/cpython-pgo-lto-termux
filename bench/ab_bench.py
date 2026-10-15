@@ -20,8 +20,10 @@ def main():
 
     va, vb = [], []
     for r in range(rounds):
-        va.append(run_one(python_a))
-        vb.append(run_one(python_b))
+        if r % 2 == 0:  # ABBA: alternate order to cancel position/thermal bias
+            va.append(run_one(python_a)); vb.append(run_one(python_b))
+        else:
+            vb.append(run_one(python_b)); va.append(run_one(python_a))
         print(f"round {r+1}/{rounds} done", file=sys.stderr)
 
     keys = va[0].keys()
